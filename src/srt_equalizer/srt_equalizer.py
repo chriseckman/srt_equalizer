@@ -16,7 +16,15 @@ def validate_file_path(file_path: str, must_exist: bool = False) -> str:
     abs_path = os.path.abspath(os.path.normpath(file_path))
     
     # Security check for path traversal attempts
-    if os.path.relpath(abs_path).startswith('..'):
+    try:
+        relpath = os.path.relpath(abs_path)
+    except ValueError:
+        # On Windows os.path.relpath may raise a ValueError if the path is on
+        # a different drive than the current working directory.  In this case
+        # we skip the relative path check and treat the absolute path as safe.
+        relpath = abs_path
+
+    if relpath.startswith('..'):
         raise ValueError(f"Invalid path traversal attempt: {file_path}")
     
     if must_exist and not os.path.isfile(abs_path):
