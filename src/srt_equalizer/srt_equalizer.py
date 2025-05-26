@@ -98,13 +98,20 @@ def write_srt(filepath: str, subs: List[srt.Subtitle]):
             fix_character_width=True,
             decode_inconsistent_utf8=False,
         )
-    except Exception:
+    except ImportError:
+        # ftfy is not installed; fallback to basic Unicode normalization
         import re
         import unicodedata
 
         text = unicodedata.normalize('NFC', text)
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    except UnicodeError:
+        # Handle unexpected Unicode errors; fallback to basic Unicode normalization
+        import re
+        import unicodedata
 
+        text = unicodedata.normalize('NFC', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
     with open(clean_path, "w", encoding="utf-8") as f:
         f.write(text)
 
