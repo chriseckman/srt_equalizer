@@ -42,8 +42,11 @@ def load_srt(filepath: str) -> List[srt.Subtitle]:
         detection = from_bytes(raw_bytes).best()
         if detection is not None:
             decoded_text = detection.str()
-    except Exception:
-        # charset-normalizer not installed or failed to detect
+    except ImportError:
+        # charset-normalizer not installed
+        decoded_text = None
+    except (AttributeError, ValueError):
+        # Detection failed due to an issue with charset-normalizer
         decoded_text = None
 
     if decoded_text is None:
