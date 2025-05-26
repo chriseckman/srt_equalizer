@@ -1,4 +1,5 @@
 import datetime
+import os
 import pickle
 
 import pytest
@@ -17,6 +18,17 @@ def test_path_validation_security():
     # Test non-existent file handling
     with pytest.raises(FileNotFoundError):
         load_srt("non_existent.srt")
+
+
+def test_validate_file_path_cross_drive(monkeypatch):
+    """os.path.relpath may raise ValueError on Windows for different drives."""
+
+    def fake_relpath(path):
+        raise ValueError("path is on mount 'C:', start on mount 'D:'")
+
+    monkeypatch.setattr(os.path, "relpath", fake_relpath)
+    result = validate_file_path("tests/gwb.srt")
+    assert result == os.path.abspath("tests/gwb.srt")
     
 
 
@@ -112,3 +124,4 @@ def test_split_subtitle_punctuation():
 
     # check fragment timing
     assert s[2].end == sub.end
+
