@@ -10,6 +10,8 @@ repository = "https://github.com/peterk/srt_equalizer"
 [tool.poetry.dependencies]
 python = "^3.8"
 srt = "^3.5.3"
+charset-normalizer = "^3.3"
+ftfy = "^6.2"
 
 [tool.poetry.dev-dependencies]
 

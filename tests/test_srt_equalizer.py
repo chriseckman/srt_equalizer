@@ -1,6 +1,5 @@
 import datetime
 import pickle
-from pathlib import Path
 
 import pytest
 import srt

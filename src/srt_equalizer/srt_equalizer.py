@@ -26,18 +26,94 @@ def validate_file_path(file_path: str, must_exist: bool = False) -> str:
 
 
 def load_srt(filepath: str) -> List[srt.Subtitle]:
-    """Load SRT file with path validation"""
+    """Load SRT file with path validation and robust encoding handling."""
     clean_path = validate_file_path(filepath, must_exist=True)
-    with open(clean_path, 'r') as f:
-        return list(srt.parse(f.read()))
+
+    # Read raw bytes in order to perform encoding detection
+    with open(clean_path, 'rb') as f:
+        raw_bytes = f.read()
+
+    decoded_text = None
+
+    # Attempt to detect encoding using charset-normalizer if available
+    try:
+        from charset_normalizer import from_bytes
+
+        detection = from_bytes(raw_bytes).best()
+        if detection is not None:
+            decoded_text = detection.str()
+    except ImportError:
+        # charset-normalizer not installed
+        decoded_text = None
+    except (AttributeError, ValueError):
+        # Detection failed due to an issue with charset-normalizer
+        decoded_text = None
+
+    if decoded_text is None:
+        decoded_text = raw_bytes.decode('utf-8', errors='replace')
+
+    # strip any UTF BOM that may remain after decoding
+    decoded_text = decoded_text.lstrip('\ufeff')
+
+    # Repair common unicode issues using ftfy if available
+    try:
+        from ftfy import fix_text
+
+        decoded_text = fix_text(
+            decoded_text,
+            normalization='NFC',
+            remove_control_chars=True,
+            uncurl_quotes=True,
+            fix_line_breaks=True,
+            fix_character_width=True,
+            decode_inconsistent_utf8=True,
+        )
+    except Exception:
+        import re
+        import unicodedata
+
+        decoded_text = unicodedata.normalize('NFC', decoded_text)
+        decoded_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', decoded_text)
+
+    return list(srt.parse(decoded_text))
 
 
 def write_srt(filepath: str, subs: List[srt.Subtitle]):
-    """Write SRT file with path validation"""
+    """Write SRT file using UTF-8 with optional text repairs."""
     clean_path = validate_file_path(filepath)
     os.makedirs(os.path.dirname(clean_path), exist_ok=True)
-    with open(clean_path, "w") as f:
-        f.write(srt.compose(subs))
+
+    text = srt.compose(subs)
+
+    # Normalize output using ftfy if available
+    try:
+        from ftfy import fix_text
+
+        text = fix_text(
+            text,
+            normalization='NFC',
+            remove_control_chars=True,
+            uncurl_quotes=True,
+            fix_line_breaks=True,
+            fix_character_width=True,
+            decode_inconsistent_utf8=False,
+        )
+    except ImportError:
+        # ftfy is not installed; fallback to basic Unicode normalization
+        import re
+        import unicodedata
+
+        text = unicodedata.normalize('NFC', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    except UnicodeError:
+        # Handle unexpected Unicode errors; fallback to basic Unicode normalization
+        import re
+        import unicodedata
+
+        text = unicodedata.normalize('NFC', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    with open(clean_path, "w", encoding="utf-8") as f:
+        f.write(text)
 
 
 def whisper_result_to_srt(segments: List[dict]) -> List[srt.Subtitle]:

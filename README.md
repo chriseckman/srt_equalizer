@@ -76,6 +76,12 @@ from srt_equalizer import srt_equalizer
 srt_equalizer.equalize_srt_file("test.srt", "shortened.srt", 42, method='halving')
 ```
 
+## Encoding support
+SRT files can be authored in a variety of encodings. `load_srt` will detect
+the file's encoding with **charset‑normalizer**, strip any leading byte order
+mark (BOM) and then repair common issues using **ftfy** when available.  All
+output files are written in UTF‑8.
+
 ## Adjust Whisper subtitle lengths
 Is is also possible to work with subtitle items produced from [Whisper](https://github.com/openai/whisper) with the following utility methods:
 
